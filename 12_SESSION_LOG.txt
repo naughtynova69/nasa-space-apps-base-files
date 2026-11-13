@@ -81,4 +81,101 @@
       in-memory; to be updated after T1 merges (one-logical-change rule).
 
                                         -- log entry 2026-11-13, naughtynova69
+
+--------------------------------------------------------------------------------
+ SESSION 2026-11-13 (EVENING) - T2/T3/T4/T5 EXECUTION - naughtynova69
+--------------------------------------------------------------------------------
+
+ Follow-up to the entry above. Updates: T1 from entry 3 was APPROVED AND
+ MERGED by Avani mid-session (PR #2, merge commit e29b436). This session
+ then executed the next four board tasks as PRs. Note: the T2-T11 GitHub
+ issues were never created, so tasks were claimed by opening PRs directly
+ (branch + PR rules from 07_GIT_WORKFLOW.txt otherwise followed).
+
+ 1. T2 (VITEST UNIT TESTS) - DONE, PR #3, MERGED by Avani (8b2dd00)
+    Branch: test/vitest-rules-report. 31 tests, all green; merge gate green.
+    - server/src/analytics/rules.test.ts (27 tests): sustained-breach
+      firing at exact sustain boundaries; de-dup while an alert is active;
+      exercise suppression (warnings only - criticals still pass) vs sleep
+      suppression (all severities); auto-resolve after the 60 s confirm
+      window + re-fire; oscillation holds the confirm window; z-score
+      firing >= 3.5 sigma, 15-min cooldown expiry, min-std variance guard,
+      exercise skip list; statusFor severity mapping; raise() fallbacks;
+      plus a table-driven pass firing EVERY threshold rule + message.
+    - server/src/analytics/report.test.ts (4): per-metric min/avg/max and
+      % time out of band, radiation delta, alert window filtering, and
+      every narrative branch (hydration, fever, SpO2 excursion, short
+      sleep flag, critical/info/no alerts, empty window).
+    - server/src/testing/fakeStore.ts: in-memory Store double - tests run
+      without SQLite; timestamps injected, no wall-clock coupling.
+    - New server/tsconfig.build.json: build excludes tests so dist stays
+      clean; typecheck still covers them. Scripts: test / test:watch /
+      test:coverage. Coverage: rules.ts 100% lines (85.3% branches),
+      report.ts 100% lines (97.7% branches) - AC was > 80%.
+
+ 2. T3 (PLAYWRIGHT SMOKE TEST) - DONE, PR #4 OPEN (mergeable/clean,
+    awaiting Avani approval)
+    Branch: test/playwright-smoke. Automates the 02_CHALLENGE_BRIEF demo
+    path: boot -> 6-crew dashboard -> inject hypoxia via the injector UI ->
+    critical SpO2 alert within 2 min (~35 s headless). Config boots BOTH
+    servers itself (webServer x2, CI-strict); root script: test:e2e.
+    - data-testid/data-severity on AlertItem, data-testid on CrewCard +
+      injector "Running now" rows - now a de-facto contract; update
+      e2e/smoke.spec.ts if renaming (see lessons).
+    - e2e/global-setup.ts wipes server/data/smoke-e2e.db and the server
+      boots with DB_PATH=data/smoke-e2e.db: the asserted critical alert
+      can only come from THIS run's injection, never from alerts
+      persisted by earlier runs (T1 makes alerts survive restarts - a
+      first cut of this test passed vacuously in 903 ms off stale rows).
+    - docs/CONTRIBUTING.md section 5 documents unit tests + e2e flow.
+    - PR history note: after PRs #3/#5 merged, this PR showed a
+      package-lock.json conflict (expected, see lessons); rebased onto
+      latest main with the lockfile regenerated - GitHub now reports
+      mergeable=True, state clean.
+
+ 3. T5 (MOBILE/TABLET RESPONSIVE PASS) - DONE, PR #5, MERGED by Avani
+    (c21a73e)
+    Branch: feat/mobile-responsive. Measured the real UI headless at
+    375 / 768 / 1280 px on all five routes BEFORE touching code: 0 px
+    page-level horizontal overflow at both AC widths; the scaffold's
+    grids already collapsed correctly (KPI 2x2, roster 1/2-col). The one
+    real gap was the fixed 340 px chart height. Change kept small:
+    VitalChart renders in a responsive container (h-56 sm:h-72
+    lg:h-[340px] = 224/288/340 px, override via containerClassName) and
+    the CrewDetail loading placeholder matches the same breakpoints.
+    Injector usability at 768 px verified by clicking through (hypoxia
+    injected, "Running now" row appears).
+
+ 4. T4 (PITCH VIDEO + PROJECT PAGE) - CONTENT DONE, PR #6 OPEN
+    Branch: docs/pitch-copy. The video file itself is a human recording
+    step (still pending):
+    - docs/pitch/PITCH_VIDEO_SCRIPT.md: timecoded 60 s shot list following
+      the brief's 5-step demo, ~132 voiceover words, recording setup +
+      compliance + post-recording checklists.
+    - docs/pitch/PROJECT_PAGE.md: ready-to-paste Space Apps page (title,
+      pitch, feature bullets, data sources citing CHeCS / HRP Standards /
+      LSDA / HRP Evidence Book as MODELED references, team table with a
+      placeholder row for remaining teammates, honest limitations).
+      Coordinate final posting with Avani.
+
+ 5. LESSONS (APPLY NEXT SESSION)
+    a. Branch from UPDATED main: the T2 branch briefly carried the
+       unpushed T1 commit and had to be rebuilt. Always
+       `git switch main && git pull` before `git switch -c`.
+    b. Parallel PRs touching package-lock.json will conflict; fix pattern
+       = rebase onto origin/main, resolve by taking main's lockfile and
+       re-running npm install (never hand-edit), confirm zero diff, gate,
+       then --force-with-lease.
+    c. Persistence changes test assumptions: e2e must run against a
+       throwaway DB or stale alerts make assertions vacuous.
+    d. Concurrent sessions move the remote under you - T1 was merged by
+       Avani while work was in flight; re-fetch before pushing.
+    e. If the "comment 'taking this' on an issue" flow is still wanted,
+       batch-create issues for T6-T11 (none exist yet).
+
+ STATE AFTER THIS SESSION: main = scaffold + T1 + T2 + T5; PR #4 (T3) and
+ PR #6 (T4 copy) open and clean; remaining board work = T4 video, T6-T11
+ (P1), T12-T18 (P2).
+
+                                        -- log entry 2026-11-13, naughtynova69
 ================================================================================
