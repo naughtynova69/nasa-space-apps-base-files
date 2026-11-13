@@ -178,4 +178,127 @@
  (P1), T12-T18 (P2).
 
                                         -- log entry 2026-11-13, naughtynova69
+
+--------------------------------------------------------------------------------
+ SESSION 2026-11-13 (LATE NIGHT) - T6-T11 EXECUTED IN PARALLEL - naughtynova69
+--------------------------------------------------------------------------------
+
+ Continuation of the entry above, same evening. First the open P0 items
+ closed out, then the entire P1 section (T6-T11) was implemented in ONE
+ parallel push using SIX sub-agents, each on its own git worktree.
+
+ 1. OPEN PRs FROM THE PREVIOUS ENTRY - RESOLVED
+    - PR #4 (T3 Playwright smoke): hit a package-lock.json conflict after
+      PRs #3/#5 merged. Rebased onto main, lockfile regenerated (union:
+      SQLite + Vitest + Playwright), and one real test bug found in the
+      process: with T1's SQLite persistence, the smoke test passed
+      VACUOUSLY in 903 ms off alerts persisted by earlier sessions. Fix:
+      e2e now boots the server with DB_PATH=server/data/smoke-e2e.db,
+      wiped by a new e2e/global-setup.ts before every run - the asserted
+      critical alert can only come from the run's own injection (real
+      pipeline ~34 s). Avani merged it (7bb76f2).
+    - PR #6 (T4 pitch copy): merged by Avani (db10809).
+    - Also on main now: d99e39b "fix: pin better-sqlite3@12.11.1 for Node
+      24 / Windows installs" - pushed DIRECTLY to main without a PR
+      (against 07_GIT_WORKFLOW; harmless technically, worth a conversation).
+
+ 2. T6-T11 EXECUTION MODEL (the interesting part)
+    - `git worktree add ../astro-tN-<slug> -b <branch> origin/main` per
+      task - six isolated working trees, one agent each, zero file
+      collisions. Branches: feat/wearable-ingest (T6),
+      feat/mad-anomaly-detector (T7), feat/hydration-coach (T8),
+      feat/critical-alert-notifications (T9), feat/rules-docs-page (T10),
+      chore/github-actions-ci (T11).
+    - Agent rules: npm install in their own tree, never push/PR/serve,
+      report back with file lists + verification output; central
+      verify -> rebase -> push -> PR by the orchestrator (me).
+    - The plan caps concurrent sub-agents at 3, so three launched first
+      (T7/T8/T9) and the rest via resume when slots freed. One agent (T11)
+      died on a provider error AFTER committing - its work was verified
+      directly instead of re-running. One agent (T6) stalled in analysis;
+      a nudge message got it moving.
+    - Every branch independently re-verified before pushing: gate
+      (typecheck + build) + unit tests + a diff review of the core files.
+
+ 3. WHAT EACH TASK DELIVERED (all PRs have full task-board AC checklists)
+    - T7 (PR #7, MERGED 74b21e2): robust MAD anomaly detector (median +
+      MAD x 1.4826) behind ASTROVITALS_ANOMALY_DETECTOR=zscore|mad, default
+      zscore = zero behavior change. Same window/cooldown/skip lists/info
+      lane; robust z reuses the zScore field so the client is untouched;
+      optional trend-slope note. Suite 31 -> 38 tests, green in BOTH
+      modes; contamination test proves the false-info win (one SpO2=200
+      outlier blinds mean/std, median/MAD unaffected).
+    - T8 (PR #8, MERGED c956bad): HydrationCoach card on the Dashboard
+      right rail - targets the LOWEST-live-hydration crew member (ps-webb
+      naturally, baseline 61), polls history API every 45 s, 2 h avg +
+      trend, "Drink 250 ml now" + Log 250 ml (localStorage), drink-slot
+      detection from history, honest "simulated telemetry" footer.
+      Deliberate deviation flagged in the PR: triggers on avg < 60 OR
+      latest < 60 so the coach never contradicts the alert feed.
+    - T9 (PR #9, OPEN - clean after rebase): lib/alertNotify.ts -
+      Notification + 880 Hz WebAudio double-pulse beep (no asset files),
+      feature-detected everywhere; snapshot history backfills a seen-set
+      so only NEW critical alerts fire; TopBar bell toggle, permission
+      flow (denied/unsupported stays off with hints), persisted in
+      localStorage astrovitals.notifyCritical. Fires on any new critical
+      alert incl. radiation_storm.
+    - T10 (PR #10, OPEN): About page "Alert rules & thresholds" table
+      built from client constants (THRESHOLDS + METRIC_META) - no
+      hand-copied server values; sustain windows stay dictionary-only
+      with a prominent link to docs/DATA_DICTIONARY.md (single source).
+      Responsive: same overflow-x-auto pattern as Reports.
+    - T11 (PR #11, OPEN): .github/workflows/ci.yml - gate job (npm ci ->
+      typecheck -> build -> unit tests) + e2e job (playwright chromium ->
+      test:e2e, artifacts on failure), parallel, PRs + pushes to main,
+      concurrency cancel-in-progress. CONTRIBUTING section 5/6 updated.
+      YAML validated; first GitHub run should show two checks.
+    - T6 (PR #12, MERGED 02061a9): server/src/ingestion/adapter.ts -
+      JSON-file wearable replay through the Engine.tick() seam (the seam
+      the store comments reserved for it). INGEST_MODE=sim|file
+      (default sim = behavior identical), INGEST_FILE, INGEST_CREW_ID;
+      looping replay with monotonic radiationCumMsv compensation;
+      scenarios still overlay replayed vitals; clearly-labeled SYNTHETIC
+      sample-stream.json (300 samples @ 1 Hz, ps-webb). Suite 47 tests.
+      No "real data" claims anywhere.
+
+ 4. PR DESCRIPTION BUG (mine, not the agents')
+    PRs #7-#11 initially had HORRIBLE bodies: I passed them as
+    single-quoted bash strings with literal \n sequences, so GitHub
+    rendered one-line walls of text full of visible "\n". (#12 used a
+    heredoc file - which is why it was fine.) All five bodies were
+    rewritten via the API at the same standard as #12: proper sections,
+    verified facts, AC checklists, reviewer notes. Lesson: always pass
+    long API payloads from FILES (heredoc/jq --rawfile), never inline
+    strings.
+
+ 5. INTEGRATION PASS (before review, on a local merge of T8+T9+T10+T11)
+    - All four client features coexist: hydration card live, TopBar bell
+      present (and it correctly REFUSED to enable with permission denied),
+      About table renders 9 rows + dictionary link, 0 px page overflow,
+      crew chart intact, and the T3 smoke test passes on the combined
+      stack (41 s). Worktree then reset --hard to its pushed branch.
+
+ 6. MERGE-ORDER CONFLICTS (expected, cheap)
+    T7/T8/T9 each add a row to the same docs/ARCHITECTURE.md table. First
+    to merge is clean; later PRs conflict on one hunk (keep both rows).
+    Happened for real: #9 rebased onto main after #7/#8/#12 merged, same
+    two-line resolution, gate + 54 tests green, --force-with-lease push,
+    mergeable=True/ clean confirmed. #10/#11 pre-checked mergeable=True.
+    GitHub's mergeable flag is lazy (list endpoint shows None/unknown
+    until computed) - `git merge-tree --write-tree origin/main <branch>`
+    is the authoritative local check.
+
+ 7. LABELS + HYGIENE
+    enhancement (+#10 documentation) labels applied to the PRs; all six
+    have Avani376 as requested reviewer; every body carries the task-board
+    AC checklist with verified (not assumed) checkmarks.
+
+ STATE AFTER THIS SESSION: T1-T8 MERGED (PRs #2-#8, #12); PRs #9/#10/#11
+ open, mergeable=clean, Avani reviewing. Once they land the ENTIRE P1
+ board is done. Remaining: T4 pitch video (human recording - script at
+ docs/pitch/PITCH_VIDEO_SCRIPT.md), P2 items T12-T18. Six worktrees
+ (astro-t6-wearable .. astro-t11-ci) kept in the workspace for
+ rebase-on-demand; safe to delete after merges.
+
+                                        -- log entry 2026-11-13, naughtynova69
 ================================================================================
