@@ -1,0 +1,163 @@
+================================================================================
+ 03 - ARCHITECTURE (MODULE BY MODULE)
+================================================================================
+
+FULL DIAGRAM:
+
+  +-------------------------- SERVER (Node/Express/Socket.IO) -----------------+
+  |                                                                            |
+  |  simulation/engine.ts (1 Hz tick loop)                                     |
+  |     |  circadian physiology, sleep/exercise/drink schedules,               |
+  |     |  stress dynamics, radiation ambient                                  |
+  |     |                                                                      |
+  |     |  merges scenario overlays  <-- simulation/scenarios.ts               |
+  |     |                              (fever/hypoxia/arrhythmia/dehydration/  |
+  |     |                               radiation_storm/stress_spike/insomnia) |
+  |     v                                                                      |
+  |  VitalsSample { ts, crewId, vitals(10), daily, asleep, exercising }        |
+  |     |                                                                      |
+  |     +------------------> store/store.ts  (ring buffers 12h @ 5s, alerts[]) |
+  |     |                                   |                                  |
+  |     v                                   v                                  |
+  |  analytics/rules.ts                  routes/api.ts      analytics/report.ts|
+  |  13 threshold rules +                REST endpoints     daily report builder|
+  |  z-score detector                    /api/...           (min/avg/max/%oob) |
+  |     |  fired / resolved                                                 |
+  |     v                                                                   |
+  |  sockets/telemetry.ts: snapshot on connect + 1Hz telemetry +            |
+  |                        alert:new / alert:resolved / mission events      |
+  +------------------------------|-------------------------------------------+
+                                 | ws + REST
+                                 v
+  +-------------------------- CLIENT (React/Vite) -----------------------------+
+  |  state/telemetry.ts  <- socket events -> useTelemetry() hook              |
+  |  pages/: Dashboard | CrewDetail | Alerts | Reports | About                |
+  |  components/: TopBar, CrewCard, VitalChart(Recharts), AlertFeed/Item,     |
+  |               ScenarioInjector, StatTile, pills, Sparkline, Card          |
+  +---------------------------------------------------------------------------+
+
+--------------------------------------------------------------------------------
+ 3.1 SERVER MODULES (server/src)
+--------------------------------------------------------------------------------
+
+  simulation/crew.ts
+    The roster (6 members) with: healthy baselines (Vitals), profile
+    (fitness 0-1, stressBase, hydrationBaseline, sleepNeedHours,
+    shieldFactor 0.92-1.11), schedule (sleep window + 90-min exercise block
+    on the UTC clock), and CMO notes. Also MISSION metadata.
+
+  simulation/engine.ts            <-- THE HEART
+    One tick = 1 second. Per crew member it computes:
+      - asleep / exercising flags (UTC minute-of-day windows, wrap-safe)
+      - exercise load (5-min ramps up/down, holds 1.0)
+      - stress: drifts toward a context target (0.04/s), noise
+      - hydration: decay 0.00055%/s awake (0.0002 asleep), +6% drink slots
+        at 07:10 / 12:30 / 17:45 / 20:30 UTC
+      - radiation: ambient 19 +/- 2.5 uSv/h slow wave x shieldFactor x
+        scenario multiplier; cumulative += rate*dt/3.6e6 (mSv)
+      - HR/RR/SpO2/BP/temp: baseline x circadian + exercise load + stress
+        coupling + scenario deltas + gaussian noise (seeded per member)
+    On wake: rolls sleep stats (sleepHours/quality, insomnia penalties),
+    resets exercise budget, may fire sleep-report alerts.
+    Then: alertEngine.evaluate() -> statuses -> store.addSample ->
+    broadcast via onTick callback (wired to Socket.IO in index.ts).
+
+  simulation/scenarios.ts
+    7 ScenarioDef entries; each maps progress 0..1 to a ScenarioDelta
+    (ramp -> plateau -> decay curves). crewId "*" = station-wide.
+    mergeDeltas() sums overlapping effects. Auto-schedule at boot:
+    fever@4min (ms-rossi), dehydration@10min (ps-webb),
+    radiation_storm@16min (*), stress_spike@25min (ms-tanaka).
+
+  analytics/rules.ts              <-- THE CLINICAL BRAIN
+    RULES array (13 defs: metric, side high/low, warn/crit thresholds,
+    sustain seconds, suppression context, message template).
+    Lifecycle per (crew, rule): breach sustained N s -> fire; back in band
+    60 s -> auto-resolve. Exercise suppresses HR-high warnings (critical
+    still passes); sleep suppresses RR-low / stress-high warnings.
+    PLUS z-score detector: rolling 240-sample window per metric, fires
+    'info' alerts at |z| >= 3.5 with 15-min cooldown and per-metric
+    minimum sigma (prevents noise-triggering).
+
+  store/store.ts
+    Per-crew ring buffers (12 h at one sample per 5 s), last live sample,
+    alerts list (cap 1000, newest first), downsampled history queries,
+    window scans for reports. The ONLY file to replace for a database.
+
+  analytics/report.ts
+    Aggregates a window into CrewReport rows + a narrative builder
+    (hydration advice, fever detection, radiation delta, sleep flags...).
+
+  routes/api.ts + sockets/telemetry.ts + index.ts
+    See 04_API_REFERENCE.txt for every endpoint/event.
+
+--------------------------------------------------------------------------------
+ 3.2 CLIENT MODULES (client/src)
+--------------------------------------------------------------------------------
+
+  state/telemetry.ts
+    Framework-agnostic store + Socket.IO wiring. useTelemetry() =
+    useSyncExternalStore hook. Keeps per-crew sparkline rings (240 pts)
+    and a 1 Hz 'recent' ring (180 samples) used to append a live tail to
+    charts fetched from REST history. Also: ackAlertLocally(id) for the
+    optimistic acknowledge.
+
+  services/api.ts
+    Typed fetch wrapper over the REST surface.
+
+  components/charts/VitalChart.tsx
+    Single-metric Recharts line chart with warn/crit ReferenceLines and
+    red ReferenceAreas for critical bands. Data = history rows + live tail.
+
+  components/crew/CrewCard.tsx
+    The dashboard card: initials avatar with status-colored ring, status
+    pill, sleep/exercise badges, HR/SpO2/temp values + sparklines,
+    hydration bar, BP/stress/radiation row, daily aggregates footer.
+
+  components/alerts/AlertFeed.tsx + AlertItem.tsx
+    Right-rail live feed (active alerts, acknowledge button) and the
+    reusable alert row (severity border/color, time-ago, ACK chip).
+
+  components/demo/ScenarioInjector.tsx
+    Crew + scenario selects, inject button, running-scenarios list with
+    countdowns; refreshes every 10 s.
+
+  pages/*: see 09_FOLDER_STRUCTURE.txt.
+
+--------------------------------------------------------------------------------
+ 3.3 DATA FLOW TIMELINE (WHAT HAPPENS AFTER 'npm run dev')
+--------------------------------------------------------------------------------
+
+  t=0s    server listens on :4000; engine ticks at 1 Hz; MET = now-147.4 days
+  t=0s    browser connects -> receives snapshot (mission, crew, alerts, scen.)
+  t=1s    first 'telemetry' broadcast; dashboard goes live
+  t=4m    AUTO: fever on Sofia Rossi (coreTemp ramps ~+1.9C, HR +16)
+  t=10m   AUTO: dehydration on Marcus Webb (already lowest baseline 61%)
+  t=16m   AUTO: solar particle event, station-wide (rate x28, crit alerts)
+  t=25m   AUTO: stress spike on Kenji Tanaka
+  any t   alerts fire on sustained breaches; auto-resolve 60 s after the
+          value returns in-band; acks are REST POSTs
+
+--------------------------------------------------------------------------------
+ 3.4 EXTENSION CHECKLISTS (THE TWO MOST COMMON CHANGES)
+--------------------------------------------------------------------------------
+
+  ADD A VITAL METRIC (e.g. cabin CO2):
+    1. server/src/types.ts        -> add to TICK_METRICS
+    2. server/src/config.ts       -> METRIC_META + METRIC_MIN_STD entries
+    3. server/src/simulation/crew.ts -> baseline value per member
+    4. server/src/simulation/engine.ts -> compute it in the vitals object
+    5. (optional) analytics/rules.ts -> new RuleDef
+    6. client/src/types.ts        -> mirror TICK_METRICS + METRIC_META +
+                                     THRESHOLDS (chart bands)
+    Everything else adapts automatically (store, charts, reports).
+
+  ADD AN ALERT RULE:
+    1. server/src/analytics/rules.ts -> append a RuleDef to RULES
+    2. client/src/types.ts -> mirror the threshold in THRESHOLDS
+    3. docs/DATA_DICTIONARY.md -> document it (and 05_DATA_DICTIONARY.txt)
+
+  ADD A SCENARIO:
+    1. server/src/simulation/scenarios.ts -> add a ScenarioDef entry
+    Done - it is immediately injectable via REST and the demo UI.
+================================================================================

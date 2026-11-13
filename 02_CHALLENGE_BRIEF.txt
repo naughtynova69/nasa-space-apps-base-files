@@ -1,0 +1,99 @@
+================================================================================
+ 02 - CHALLENGE BRIEF (OFFICIAL SPACE APPS 2026 CHALLENGE, DECODED)
+================================================================================
+
+CHALLENGE (OFFICIAL TITLE):
+  "Create Health Monitoring Software for Astronauts on Space Missions"
+
+OFFICIAL PAGE:
+  https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/
+  (tabs: Details / Resources / Teams - re-read the Resources tab before
+  submission; the page is the single source of truth)
+
+CORE CHALLENGE STATEMENT (quoted from the official page):
+  "Your challenge is to build a health monitoring software that gathers health
+   indicators and enables astronauts to evaluate and act on the status of
+   their health."
+
+BACKGROUND PROVIDED BY NASA (paraphrased):
+  Long-duration missions expose astronauts to space radiation and to isolation
+  and confinement. Because crews operate far from Earth-based medical support,
+  they need tools to self-monitor health indicators and make informed
+  decisions about their condition in real time.
+
+--------------------------------------------------------------------------------
+ DECODING THE STATEMENT - WHAT THE WORDS DEMAND
+--------------------------------------------------------------------------------
+
+ "gathers health indicators"
+   -> We must define WHICH indicators and ingest them somewhere central.
+   -> OUR ANSWER: 10 vital streams per crew member (HR, RR, SpO2, BP sys/dia,
+      core temp, hydration, radiation rate + cumulative, stress index) at
+      1 Hz, plus daily sleep/exercise aggregates. Stored in a 12 h ring
+      buffer, queryable via REST.
+
+ "enables astronauts to evaluate"
+   -> Humans (not just algorithms) must be able to READ the state of health.
+   -> OUR ANSWER: dashboard with status pills; trend charts with clinical
+      threshold bands; alert console with filters; daily reports with
+      min/avg/max + % time out of band + narrative; JSON export.
+
+ "act on the status of their health"
+   -> The system must support a DECISION -> ACTION loop.
+   -> OUR ANSWER: severity-ranked alerts that carry a recommendation
+      ("recommend fluid intake", "initiate shelter protocol", "CMO review"),
+      an acknowledge workflow for the CMO, and actionable daily aggregates
+      (exercise compliance, sleep flags).
+
+ "astronauts ... far from Earth-based medical support"
+   -> On-board autonomy is a HARD requirement, not a nice-to-have.
+   -> OUR ANSWER: single Node process + browser, zero external services.
+      This is also why we ship a simulation rather than requiring a live
+      sensor stack - and it doubles as a great demo tool.
+
+--------------------------------------------------------------------------------
+ SUBMISSION REQUIREMENTS (SPACE APPS STANDARD - VERIFY ON THE SITE)
+--------------------------------------------------------------------------------
+
+  Typical Space Apps submission package (confirm exact list on the challenge
+  page / your local event page before judging):
+
+  1. Project title + challenge it solves
+  2. A ~30-60 second pitch video (recommended) - our demo script:
+     a. Show dashboard, mention MET/sol and 6 crew
+     b. Inject "hypoxia" via the Scenario Injector, narrate the alert firing
+     c. Acknowledge the alert as the CMO
+     d. Show the crew detail chart with the threshold bands
+     e. Open Reports, show the narrative + JSON export
+  3. Public repo link (this repository) with a clear README
+  4. Team information on the Space Apps project page
+  5. Note what data sources were used (simulated, modeled on NASA references)
+
+--------------------------------------------------------------------------------
+ JUDGING CRITERIA (SPACE APPS GLOBAL - TYPICAL WEIGHTING)
+--------------------------------------------------------------------------------
+
+  - Impact (does it address the challenge?)
+  - Creativity / innovation
+  - Validity (is it scientifically plausible?)  <- our data dictionary helps
+  - Relevance (to the challenge, not just "space-themed")
+  - Presentation (clarity of the page + video)
+
+  IMPACT NOTE: A GitHub discussion for this challenge flagged LIMITED
+  RESOURCES/DATA as a known pain point for teams. Our simulation-first
+  approach is the correct counter: it needs no external data access at all.
+
+--------------------------------------------------------------------------------
+ DATA SOURCES WE MODEL ON (cite these on the project page)
+--------------------------------------------------------------------------------
+
+  - NASA Crew Health Care System (CHeCS) - on-board medical equipment +
+    countermeasure (exercise) requirements
+  - NASA Human Research Program (HRP) Standards - radiation dose limits,
+    sleep requirements, behavioral health
+  - NASA Life Sciences Data Archive (LSDA) - crew physiologic datasets
+  - NASA HRP Evidence Book - spaceflight risk evidence
+
+  IMPORTANT: we DO NOT claim to ingest these; we model thresholds/units on
+  published values and state clearly that all demo data is simulated.
+================================================================================

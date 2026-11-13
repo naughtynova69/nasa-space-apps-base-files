@@ -1,0 +1,107 @@
+================================================================================
+ 07 - GIT WORKFLOW (BRANCHES, COMMITS, PRs)
+================================================================================
+
+REPO:  https://github.com/Avani376/astronaut-health-monitoring
+MAIN:  protected-ish by convention - always PR, never push to main directly.
+
+--------------------------------------------------------------------------------
+ 7.1 FIRST TIME ON A MACHINE
+--------------------------------------------------------------------------------
+
+  git config --global user.name  "Your Name"
+  git config --global user.email "you@example.com"
+  git clone https://github.com/Avani376/astronaut-health-monitoring.git
+  cd astronaut-health-monitoring
+  npm install
+
+  # Get added as a collaborator: send your GitHub username to Avani376,
+  # accept the invite email, then you can push branches.
+
+--------------------------------------------------------------------------------
+ 7.2 DAILY LOOP (COPY/PASTE)
+--------------------------------------------------------------------------------
+
+  # 1. Sync
+  git switch main
+  git pull origin main
+
+  # 2. Branch  (name it: feat/ fix/ docs/ chore/ + short slug)
+  git switch -c feat/hydration-coach
+
+  # 3. Work, then verify the merge gate BEFORE committing:
+  npm run typecheck && npm run build
+
+  # 4. Commit (small, focused commits)
+  git add -A
+  git commit -m "feat: hydration coach panel with trend preview"
+
+  # 5. Push + open PR
+  git push -u origin feat/hydration-coach
+  # then open the PR on GitHub against main
+
+--------------------------------------------------------------------------------
+ 7.3 BRANCH NAMING
+--------------------------------------------------------------------------------
+
+  feat/<slug>     new functionality
+  fix/<slug>      bug fixes
+  docs/<slug>     documentation only
+  chore/<slug>    tooling, deps, config
+  test/<slug>     tests
+
+--------------------------------------------------------------------------------
+ 7.4 COMMIT MESSAGE STYLE
+--------------------------------------------------------------------------------
+
+  <type>: <imperative summary, <= 72 chars>
+
+  Examples:
+    feat: add SpO2 trend chart with critical bands
+    fix: suppress HR-high warning during exercise windows
+    docs: document radiation thresholds in data dictionary
+    chore: pin recharts to 2.x
+
+  Why imperative: "this commit adds X" reads best as "add X".
+
+--------------------------------------------------------------------------------
+ 7.5 PULL REQUEST RULES
+--------------------------------------------------------------------------------
+
+  1. One logical change per PR; keep the diff reviewable (< ~400 lines ideal).
+  2. PR description MUST include:
+       - what changed and why (link the task/issue)
+       - how you tested it (manual steps are fine)
+       - screenshots/GIFs for UI changes
+  3. The gate:  npm run typecheck && npm run build  must pass.
+  4. One approving review (Avani or another teammate) -> merge with
+     "Squash and merge" to keep main history linear.
+  5. Delete your branch after merge.
+
+--------------------------------------------------------------------------------
+ 7.6 KEEPING YOUR BRANCH FRESH
+--------------------------------------------------------------------------------
+
+  git fetch origin
+  git rebase origin/main        # preferred; rebase YOUR branch onto main
+  # resolve conflicts, then:
+  git push --force-with-lease   # NEVER plain --force on shared branches
+
+--------------------------------------------------------------------------------
+ 7.7 HOTFIX PATH (PRODUCTION DEMO BROKEN, EVENT IN 1 HOUR)
+--------------------------------------------------------------------------------
+
+  git switch -c fix/breaking-thing
+  ...minimal fix...
+  npm run typecheck && npm run build
+  git commit + push + PR, tag it URGENT in the title,
+  ping Avani for immediate review.
+
+--------------------------------------------------------------------------------
+ 7.8 FILE HYGIENE
+--------------------------------------------------------------------------------
+
+  .gitignore already covers: node_modules/, dist/, .env*, logs, data/.
+  NEVER commit: real medical data, API keys/tokens, large datasets.
+  Small fixtures for tests are fine (JSON, < 100 KB).
+================================================================================

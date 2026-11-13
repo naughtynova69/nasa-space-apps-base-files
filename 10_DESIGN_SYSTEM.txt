@@ -1,0 +1,119 @@
+================================================================================
+ 10 - DESIGN SYSTEM (UI THEME + PATTERNS)
+================================================================================
+
+The UI is a dark mission-control aesthetic. Follow these rules so PRs look
+like one person wrote them.
+
+--------------------------------------------------------------------------------
+ 10.1 PALETTE (tailwind.config.js -> theme.extend.colors)
+--------------------------------------------------------------------------------
+
+  BACKGROUND LADDER
+    space-950  #05070d   page edges / deepest wells
+    space-900  #070b14   page background (body + starfield base)
+    space-850  #0a101f   scrollbar track
+    space-800  #0d1424   PANEL background (Card default)
+    space-700  #111a2e   nested wells, hover fill
+    space-600  #1c2942   borders (default border color space-600/60)
+    space-500  #2a3a5c   strong borders, input borders
+
+  STATUS / SEMANTIC (never invent new status colors)
+    ok         #34d399  nominal states, positive deltas
+    info       #38bdf8  "watch" status, info alerts, sleep badge
+    warn       #fbbf24  warnings, threshold warn lines
+    crit       #f87171  criticals, threshold crit lines, HR color
+    accent     #22d3ee  interactive elements, brand, links, active chips
+
+  METRIC SERIES COLORS (client/src/types.ts METRIC_META)
+    HR #f87171 | RR #a78bfa | SpO2 #38bdf8 | BP-S #fbbf24 | BP-D #f59e0b
+    TEMP #fb923c | HYD #22d3ee | RAD-R #34d399 | RAD-C #4ade80 | STRESS #e879f9
+
+  TEXT
+    headings    text-slate-100
+    body        text-slate-200/300
+    secondary   text-slate-400
+    labels      text-slate-500 (uppercase tracking-wider, 10-11px)
+
+--------------------------------------------------------------------------------
+ 10.2 SIGNATURE ELEMENTS
+--------------------------------------------------------------------------------
+
+  STARFIELD       body-level CSS class .starfield (index.css): layered
+                  radial-gradient dots + two soft cyan glows. Never add
+                  canvas/animated stars - keep the page light.
+
+  PANELS          Card component: rounded-xl border border-space-600/60
+                  bg-space-800/70 shadow-panel backdrop-blur, header with
+                  11px uppercase title row + optional right slot.
+
+  STATUS RING     Crew avatar initials in a 2px border circle whose color
+                  encodes status (space-500/info/warn/crit).
+
+  STATUS PILL     StatusPill/SeverityPill: rounded-full border + 1.5 dot +
+                  label; classes from ui/pills.tsx maps ONLY.
+
+  CRITICAL PULSE  .crit-pulse (index.css): 2s red ring pulse on critical
+                  pills and alert cards. Use sparingly - one animated
+                  element per card max.
+
+  NUMERALS        Every live number gets the .num class (tabular-nums) so
+                  digits don't jitter at 1 Hz.
+
+  SPARKLINES      ui/Sparkline.tsx - dependency-free SVG polyline, height
+                  h-6 (cards) / h-9, metric color, vectorEffect
+                  non-scaling-stroke.
+
+  THRESHOLD OVERLAYS  VitalChart: dashed amber line = warn, dashed red =
+                  crit, translucent red ReferenceArea above/below crit.
+                  Labels "warn >= x" positioned inside top/right.
+
+  LIVE BADGES     "Sleep cycle" (info) and "Exercising" (accent) chips on
+                  crew cards when the schedule flag is on.
+
+--------------------------------------------------------------------------------
+ 10.3 LAYOUT PATTERNS
+--------------------------------------------------------------------------------
+
+  PAGE FRAME      TopBar (sticky, blur) + main (max-w-7xl mx-auto px-4) +
+                  footer disclaimer. Never remove the simulated-data
+                  footer disclaimer.
+
+  DASHBOARD       grid xl:grid-cols-3: left (2 cols) = KPI row (grid-cols-2
+                  lg:grid-cols-4) + crew grid (md:grid-cols-2); right rail =
+                  AlertFeed (max-h 420 scroll) + ScenarioInjector.
+
+  DETAIL PAGE     row of 10 vitals tiles (grid-cols-2 md:grid-cols-5) +
+                  xl:grid-cols-3: left chart+daily, right notes+alerts.
+
+  FILTER BARS     chip groups using the chip() helper pattern from
+                  pages/Alerts.tsx (accent when active).
+
+  FORM CONTROLS   selects/buttons: bg-space-700, border-space-500,
+                  focus:border-accent, rounded-md, text-sm.
+
+  EMPTY STATES    centered slate-500 text, one sentence, no illustration.
+
+--------------------------------------------------------------------------------
+ 10.4 COPY RULES
+--------------------------------------------------------------------------------
+
+  - Mission-ops voice, terse, no exclamation marks.
+  - Times: always UTC with trailing Z or explicit "UTC".
+  - Alerts: "<Metric> <direction>: <value> <unit> sustained above/below
+    <threshold> <unit> - <recommendation>".
+  - Never say "real data". Footer disclaimer stays.
+  - Icons: inline SVG only (no icon lib yet); keep them 1-color strokes.
+
+--------------------------------------------------------------------------------
+ 10.5 ACCESSIBILITY BASELINE (KEEP IN EVERY PR)
+--------------------------------------------------------------------------------
+
+  - Contrast: body text is slate-200/300 on space-900 - do not introduce
+    slate-600-on-space-700 text.
+  - Every clickable icon-only element needs an aria-label or title.
+  - Status is never conveyed by color alone: pills include a text label;
+    alerts include severity words.
+  - Focus rings: rely on Tailwind default focus-visible; keep outline on
+    interactive elements (do not outline-none without replacement).
+================================================================================

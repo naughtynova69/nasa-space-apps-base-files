@@ -1,0 +1,104 @@
+================================================================================
+ 08 - TASK BOARD (CLAIM ONE TODAY)
+================================================================================
+
+How to claim: open a matching GitHub issue (or comment on the existing one)
+saying "taking this", then follow 07_GIT_WORKFLOW.txt. Priority: P0 now,
+P1 this week, P2 nice-to-have. Effort is for ONE person familiar with the
+setup guide (06).
+
+--------------------------------------------------------------------------------
+ P0 - SHIP THIS WEEK (HACKATHON CRITICAL PATH)
+--------------------------------------------------------------------------------
+
+T1  SQLite persistence                                     effort: M  (backend)
+    Replace in-memory ring buffers with better-sqlite3. Keep store.ts's
+    public API identical (addSample, history, windowStats, alerts...).
+    Schema: samples(ts, crewId, metric, value), alerts(...), crew(seed).
+    Files: server/src/store/store.ts (+ new db.ts). ROADMAP: v1.1 item 1.
+    AC: server restart retains history; all REST endpoints unchanged.
+
+T2  Vitest unit tests for rules + report                   effort: S  (backend)
+    Pure functions - easy wins. Cover: sustained-breach firing, suppression
+    during exercise, auto-resolve after 60 s, z-score cooldown, narrative
+    generation branches. Add "test" script to server/package.json.
+    AC: npm test green; rules.ts coverage > 80%.
+
+T3  Playwright smoke test                                  effort: S  (frontend)
+    Script: boot stack -> dashboard shows 6 crew -> inject hypoxia via UI ->
+    expect a critical alert chip within 2 min. Add "test:e2e" script.
+    AC: runs headless in CI-able manner; documented in docs/CONTRIBUTING.md.
+
+T4  Pitch video + project page copy                        effort: S  (content)
+    Follow the 5-step demo script in 02_CHALLENGE_BRIEF.txt. 60 s max.
+    Deliverables: video file + project page text (title, pitch, data sources,
+    team). Coordinate with Avani for Space Apps project page.
+
+T5  Mobile/tablet responsive pass                          effort: S  (frontend)
+    Crew cards grid -> 1 col on small screens; KPI row -> 2x2; chart height
+    responsive. Test at 375px and 768px widths.
+    AC: no horizontal scroll at 375px; injector usable on tablet.
+
+--------------------------------------------------------------------------------
+ P1 - NEXT (MAKE IT DEFENSIBLE + DELIGHTFUL)
+--------------------------------------------------------------------------------
+
+T6  Wearable ingest adapter                                effort: M  (backend)
+    New server module ingestion/adapter.ts producing VitalsSample from a
+    pluggable source; start with a CSV/JSON file replay of a public dataset.
+    The engine stays as fallback when no adapter is configured.
+    AC: replayed dataset flows through rules + UI unchanged.
+
+T7  ML-lite anomaly detection upgrade                      effort: M  (analytics)
+    Replace z-score with robust MAD-based detector + optional trend slope;
+    keep 'info' severity lane and cooldowns. A/B flag via env var.
+    AC: fewer false infos on exercise transitions (compare logs before/after).
+
+T8  Hydration coach card                                   effort: S  (frontend)
+    When hydration avg trend (last 2 h) < target, show an actionable card:
+    "Drink 250 ml now" + countdown since last drink slot. Data: history API.
+    AC: card appears for ps-webb within 10 min of boot.
+
+T9  Browser notifications + audio for critical alerts      effort: S  (frontend)
+    Notification API + short beep (WebAudio, no asset files). Toggle in UI.
+    AC: fires on radiation_storm; toggle persisted in localStorage.
+
+T10 Alert rules documentation page                         effort: S  (docs)
+    Render 05_DATA_DICTIONARY.txt content in the About page (single source:
+    keep the .md in docs/ and link).
+
+T11 GitHub Actions CI                                      effort: S  (chore)
+    Workflow: npm ci, typecheck, build, tests on PRs to main.
+    AC: green check required before merge.
+
+--------------------------------------------------------------------------------
+ P2 - AMBITION LANE (POST-HACKATHON / V2)
+--------------------------------------------------------------------------------
+
+T12 EVA suit telemetry mode (suit pressure, O2, battery overlay during EVA)
+T13 Multi-vehicle profiles (Gateway / lunar surface environment effects)
+T14 Auth + roles (CMO vs crew vs ground) + audit log
+T15 Trend forecasting (6 h hydration/radiation projection with bands)
+T16 Docker compose + one-command deploy
+T17 Code-splitting for the Recharts bundle (~190 kB gzip today)
+T18 i18n + accessibility pass (WCAG AA on the dark theme)
+
+--------------------------------------------------------------------------------
+ OWNERSHIP MAP (SEAMS - WHERE TO WORK)
+--------------------------------------------------------------------------------
+
+  Backend engine/rules  -> server/src/simulation, server/src/analytics
+  API                   -> server/src/routes, server/src/sockets
+  Persistence           -> server/src/store (T1 replaces this file only)
+  Frontend state/socket -> client/src/state/telemetry.ts
+  UI components         -> client/src/components
+  Pages                 -> client/src/pages
+  Charts                -> client/src/components/charts/VitalChart.tsx
+  Docs                  -> docs/ + this pack (update on any behavior change)
+
+DESIGN CONSTRAINTS YOU MUST NOT BREAK (see 10_DESIGN_SYSTEM.txt):
+  - All telemetry is simulated; never add a "real data" claim without T6.
+  - On-board autonomy: no hard external service dependencies.
+  - Strict TypeScript: no `any`, no unused vars; keep server/client types
+    mirrored when changing the domain model.
+================================================================================

@@ -1,0 +1,108 @@
+================================================================================
+ 05 - DATA DICTIONARY (METRICS, UNITS, THRESHOLDS)
+================================================================================
+
+Source of truth: server/src/analytics/rules.ts (alerts) and
+client/src/types.ts THRESHOLDS (chart bands). Keep both + this file in sync.
+
+--------------------------------------------------------------------------------
+ LIVE TICK METRICS (1 Hz PER CREW MEMBER)
+--------------------------------------------------------------------------------
+
+metric           unit      nominal      WARNING                CRITICAL
+---------------- --------- ------------ ---------------------- ----------------------
+heartRate        bpm       50-100       >105 (60s)             >140 (15s)
+                                        <45 (30s)              <40 (10s)
+respRate         br/min    10-22        >24 (60s)  <9 (30s)    >32 (15s)  <7 (10s)
+spo2             %         93-100       <94 (30s)              <90 (10s)
+bpSys            mmHg      90-140       >140 (120s) <85 (60s)  >160 (30s) <75 (20s)
+bpDia            mmHg      55-90        >90 (120s)             >100 (30s)
+coreTemp         C         35.8-38.0    >38.0 (120s)           >39.0 (30s)
+                                        <35.8 (120s)           <35.0 (30s)
+hydrationPct     %         >=55         <60 (10s)              <50 (5s)
+radiationUsvH    uSv/h     5-60         >60 (30s)              >200 (10s)
+radiationCumMsv  mSv       monotonic    -                      -
+stressIndex      /10       0-7          >=7 (240s)             >=9 (60s)
+
+NOTES
+  - "sustained" seconds in parentheses: the value must stay out of band that
+    long before the alert fires (no single-sample false alarms).
+  - Exercise context suppresses heartRate-high WARNINGS (a running astronaut
+    is fine); CRITICAL still passes. Sleep suppresses respRate-low and
+    stress-high warnings.
+  - hydrationPct decays ~2%/h awake, 0.7%/h asleep; drink slots
+    (+6%) at 07:10, 12:30, 17:45, 20:30 UTC.
+  - radiationUsvH baseline is ISS-like ~18-24 uSv/h (about 0.5 mSv/day);
+    the radiation_storm scenario multiplies ambient dose ~28x.
+  - stressIndex is a behavioral-health composite (0 = calm, 10 = severe);
+    driven by workload/day-wave/scenarios, reduced by exercise and sleep.
+
+--------------------------------------------------------------------------------
+ DAILY AGGREGATES (CURRENT SOL)
+--------------------------------------------------------------------------------
+
+sleepHours       h    target >= 7   (<6 fires info/warning on wake; <5 -> warning)
+sleepQuality     /100 target >= 55  (reduced by stress + insomnia scenarios)
+exerciseMinutes  min  target 120    (ISS countermeasure proxy; resets on wake)
+
+--------------------------------------------------------------------------------
+ CREW STATUS MODEL
+--------------------------------------------------------------------------------
+
+Per-crew status = worst ACTIVE alert severity:
+  nominal   no active alerts
+  watch     info alerts only (z-score anomalies, poor sleep quality)
+  warning   >= 1 active warning
+  critical  >= 1 active critical
+
+--------------------------------------------------------------------------------
+ ALERT LIFECYCLE
+--------------------------------------------------------------------------------
+
+  value breaches threshold --(sustained N s)--> alert FIRES
+  value back in band --(confirmed 60 s)--> alert AUTO-RESOLVES (resolvedAt)
+  CMO action: POST /api/alerts/:id/acknowledge (acknowledgedAt; NOT resolve)
+
+--------------------------------------------------------------------------------
+ SCENARIO EFFECTS (SERVER OVERLAYS; RAMP -> PLATEAU -> DECAY)
+--------------------------------------------------------------------------------
+
+fever            coreTemp +1.9C, heartRate +16, respRate +3.5 (600 s default)
+hypoxia          spo2 -9.5, heartRate +22, respRate +8 (360 s)
+arrhythmia       heartRate +18 + beat jitter, bpSys +8 (480 s)
+dehydration      hydration -0.03%/s (~-18% over window), HR +9, bpSys -9 (600 s)
+radiation_storm  dose rate x28, station-wide, stress +1.4 (720 s)
+stress_spike     stress +6.2, heartRate +12, bpSys +10 (540 s)
+insomnia         NEXT wake: sleepHours -2.4, quality -28, stress +0.8 (600 s)
+
+--------------------------------------------------------------------------------
+ PHYSIOLOGIC MODEL PARAMETERS (SIMULATION)
+--------------------------------------------------------------------------------
+
+tick rate             1 s broadcast + analytics
+history cadence       1 sample / 5 s into a 12 h ring buffer
+circadian HR factor   x0.82 asleep; 0.90-1.04 awake (peak 14:00 UTC)
+exercise load         90-min block per member/day; 5-min ramps;
+                      HR target ~ 95 + fitness x 55 bpm (fitness 0.48-0.86)
+stress dynamics       drift to context target at 0.04/s; day-wave +0.5;
+                      exercise -1.3; scenarios add directly
+radiation ambient     19 +/- 2.5 uSv/h slow wave x shieldFactor (0.92-1.11)
+hydration             0.00055 %/s awake / 0.0002 asleep + drink slots
+z-score detector      window 240 samples, |z| >= 3.5, 15-min cooldown,
+                      per-metric minimum sigma (HR 2.0, temp 0.08, ...)
+
+--------------------------------------------------------------------------------
+ CLINICAL REFERENCES MODELED ON (NOT INGESTED)
+--------------------------------------------------------------------------------
+
+  - NASA Crew Health Care System (CHeCS) - on-board medical monitoring,
+    countermeasure exercise requirements
+  - NASA Human Research Program Standards - radiation (0.5 mSv/day planning
+    value), sleep 7-8.5 h, behavioral health
+  - NASA Life Sciences Data Archive (LSDA) - crew physiologic datasets
+  - NASA HRP Evidence Book - spaceflight risk evidence
+
+DISCLAIMER: ALL data in the running app is SIMULATED. Do not use for any
+medical purpose. When you tune the model, keep values plausible per these
+references and update this file in the same PR.
+================================================================================

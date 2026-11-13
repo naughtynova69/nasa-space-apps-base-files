@@ -1,0 +1,96 @@
+================================================================================
+ 09 - FOLDER STRUCTURE (EVERY FILE, EXPLAINED)
+================================================================================
+
+REPO ROOT
+  package.json              npm workspaces root; dev/build/typecheck scripts
+  README.md                 repo front page (quick start + features)
+  LICENSE                   MIT
+  .gitignore                node_modules, dist, env, logs, data/
+  docs/                     contributor docs (mirrors this pack as .md)
+    ARCHITECTURE.md         deep-dive architecture (same as file 03)
+    API.md                  REST + socket reference (same as file 04)
+    DATA_DICTIONARY.md      metrics/thresholds (same as file 05)
+    CONTRIBUTING.md         setup + workflow (same as files 06/07)
+    ROADMAP.md              prioritized ideas (same as file 08 lane P1/P2)
+
+SERVER (server/)
+  package.json              express, cors, socket.io; tsx for dev, tsc for build
+  tsconfig.json             strict TypeScript, CommonJS out to dist/
+  src/
+    index.ts                bootstrap: express app, /api router, http server,
+                            socket attach, engine.start(), graceful shutdown
+    config.ts               CONFIG (tick 1s, ring 12h/5s, z-score params, ports,
+                            auto-scenario schedule) + METRIC_META + METRIC_MIN_STD
+    types.ts                DOMAIN MODEL source of truth:
+                            TICK_METRICS, Vitals, DailyStats, CrewMember,
+                            VitalsSample, Alert, MissionInfo, Scenario*,
+                            CrewSummary, HistoryResponse, CrewReport
+    simulation/
+      crew.ts               6-member roster: baselines, profiles, schedules,
+                            notes + MISSION metadata (start offset 147.4 days)
+      engine.ts             1 Hz tick loop, physiology math, wake/exercise
+                            state machine, status computation, onTick wiring
+      scenarios.ts          7 scenario defs + Scenario class + mergeDeltas()
+    analytics/
+      rules.ts              13 threshold rules + z-score detector + lifecycle
+      report.ts             window aggregation + narrative builder
+    store/
+      store.ts              ring buffers (12 h @ 5 s), alerts list, history
+                            queries, window scans  <-- T1 swaps this file
+    routes/
+      api.ts                REST surface (mission/crew/history/alerts/reports/
+                            scenarios/metrics/health)
+    sockets/
+      telemetry.ts          snapshot on connect + 1 Hz telemetry + alert events
+
+CLIENT (client/)
+  package.json              react 18, react-router-dom, recharts,
+                            socket.io-client; vite + tailwind 3.4 + typescript
+  vite.config.ts            port 5173 + proxy /api and /socket.io -> :4000
+  tailwind.config.js        space palette (950-500), ok/warn/crit/info/accent
+  postcss.config.js         tailwind + autoprefixer
+  index.html                shell + inline SVG favicon (heartbeat emblem)
+  tsconfig.json             strict, bundler resolution, react-jsx
+  src/
+    main.tsx                entry; initTelemetry() BEFORE render
+    App.tsx                 BrowserRouter + TopBar + 5 routes + footer
+    index.css               tailwind layers + starfield background + scrollbar
+                            + crit-pulse animation
+    types.ts                CLIENT MIRROR of server domain model +
+                            METRIC_META (colors!) + THRESHOLDS (chart bands)
+    state/
+      telemetry.ts          socket store: snapshot/telemetry/alert handlers,
+                            sparkline rings (240), recent ring (180),
+                            useTelemetry() hook, ackAlertLocally()
+    services/
+      api.ts                typed REST client
+    lib/
+      time.ts               utcClock, formatMET, hhmm, timeAgo
+      vitals.ts             metricTone() threshold->color + toneText map
+    components/
+      layout/TopBar.tsx     brand, nav (alerts count badge), MET + UTC clocks,
+                            live-link dot
+      ui/Card.tsx           panel wrapper with title/right slot
+      ui/StatTile.tsx       KPI tile (label, value, unit, sub, tone)
+      ui/pills.tsx          StatusPill + SeverityPill (+ color maps)
+      ui/Sparkline.tsx      dependency-free SVG polyline sparkline
+      crew/CrewCard.tsx     dashboard crew card (rings, sparks, hydration bar)
+      charts/VitalChart.tsx Recharts line + warn/crit bands (single metric)
+      alerts/AlertFeed.tsx  right-rail live feed
+      alerts/AlertItem.tsx  alert row (severity styling, ACK button, status)
+      demo/ScenarioInjector.tsx  inject controls + running list w/ countdown
+    pages/
+      Dashboard.tsx         KPI row + crew grid + alert feed + injector
+      CrewDetail.tsx        tiles for 10 metrics, chart w/ metric chips +
+                            window select + live tail, daily aggregates,
+                            CMO notes + schedule, member alert list
+      Alerts.tsx            alert console w/ status/severity/crew filters
+      Reports.tsx           crew+window selectors, narrative, stats table,
+                            KPI cards, JSON download
+      About.tsx             challenge mapping, architecture sketch, stack,
+                            disclaimer + NASA references, contributor info
+
+WHERE THIS PACK SITS (outside the repo, shared manually):
+  team-context/  00-11*.txt  <- the files you are reading
+================================================================================

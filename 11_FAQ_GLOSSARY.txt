@@ -1,0 +1,101 @@
+================================================================================
+ 11 - FAQ + GLOSSARY
+================================================================================
+
+--------------------------------------------------------------------------------
+ FAQ
+--------------------------------------------------------------------------------
+
+Q: Is the medical data real?
+A: No. Everything is simulated by a physiologic model (1 Hz, seeded PRNG).
+   Thresholds/units are modeled on published NASA references. The footer of
+   the app says so; keep that disclaimer in every screenshot you publish.
+
+Q: Do I need a database or API keys to run it?
+A: No. npm install && npm run dev. SQLite is planned (task T1) but the demo
+   is deliberately zero-dependency.
+
+Q: Why is the astronaut crew fictional?
+A: We ship 6 crew members with distinct baselines/schedules so the demo shows
+   variety (one chronically under-hydrated, one athlete with low HR, etc.).
+   They are characters, not data records - do not add personal data.
+
+Q: The alert didn't fire right after I injected a scenario - bug?
+A: No: rules require SUSTAINED breaches (e.g. SpO2 < 90 for 10 s after the
+   curve reaches it) and exercise/sleep suppress some warnings. Hypoxia fires
+   ~90-110 s after injection. See 05_DATA_DICTIONARY.txt.
+
+Q: Why did my HR-high warning not fire during exercise?
+A: Expected physiology is suppressed: HR-high warnings are suppressed while
+   exercising (criticals still pass), RR-low/stress-high while asleep.
+
+Q: Where does the client get history for charts?
+A: REST /api/crew/:id/history (server ring buffer, 5 s cadence, 12 h) and
+   appends the live 1 Hz tail from the socket (state/telemetry.ts recent ring).
+
+Q: How do I add a new vital metric?
+A: Follow the 6-step checklist at the end of 03_ARCHITECTURE.txt (3.4).
+
+Q: TypeScript errors after pulling?
+A: Run npm install (workspaces hoist deps), then npm run typecheck. Fix the
+   FIRST error only - later ones are usually cascade noise.
+
+Q: Ports already in use?
+A: See 06_SETUP_GUIDE.txt section 6.4 (Windows) / 6.5 (macOS/Linux).
+
+Q: Can I push directly to main?
+A: No. All changes via PR (07_GIT_WORKFLOW.txt). Hotfix path exists (7.7).
+
+Q: Who reviews PRs?
+A: Avani (repo owner) or a teammate you nominate; one approval + green
+   typecheck/build required.
+
+Q: Where do the "auto" demo events come from?
+A: CONFIG.autoScenarioSchedule in server/src/config.ts - fever @ 4 min,
+   dehydration @ 10 min, radiation storm @ 16 min, stress spike @ 25 min
+   after server boot. Keep the timeline tight for the pitch video.
+
+Q: What exactly does the z-score alert mean?
+A: A value is >= 3.5 rolling standard deviations from its own last-240-sample
+   baseline - a "statistically unusual" flag (info severity), not a clinical
+   threshold breach. Cooldown 15 min per metric to avoid spam.
+
+Q: How is stressIndex computed? Is it a real measurement?
+A: It is a modeled composite (0-10): baseline tendency + day-wave + scenarios,
+   reduced by exercise/sleep, with noise. Useful for demo/behavioral-health
+   story; a real product would feed it from wearable HRV + self-reports (T7).
+
+Q: How do I verify a PR before review?
+A: npm run typecheck && npm run build, then manual checklist in
+   docs/CONTRIBUTING.md section 5.
+
+--------------------------------------------------------------------------------
+ GLOSSARY (SPACE MEDICINE + OUR DOMAIN)
+--------------------------------------------------------------------------------
+
+  CMO        Crew Medical Officer - astronaut with medical training; primary
+             user of the alert acknowledge workflow.
+  CHeCS      Crew Health Care System - NASA's on-board medical suite; our
+             threshold/reference source.
+  Counter-   Daily exercise prescription on ISS (~2 h) preventing bone/
+  measures   muscle/cardiovascular deconditioning; our exerciseMinutes target.
+  EVA        Extra-Vehicular Activity - spacewalk; our scenarios reference
+             EVA prep (hypoxia story) and EVA dose (higher shieldFactor).
+  HRP        NASA Human Research Program - standards + evidence book.
+  LSDA       Life Sciences Data Archive - NASA physiologic datasets.
+  MET        Mission Elapsed Time, displayed "147d 06:32:11".
+  MET (music)| ignore this line, it's a classic collision: here MET is
+             mission time, not metabolic equivalent.
+  SPE        Solar Particle Event - radiation storm; our radiation_storm
+             scenario (~28x ambient dose rate).
+  Ring buffer Fixed-size in-memory history (oldest dropped): 12 h @ 5 s.
+  Sol        Mission day count (from mission start; sol = MET/86400 + 1).
+  Sustained  Seconds a value must stay out of band before an alert fires.
+  Z-score    (value - rolling mean) / rolling std; |z| >= 3.5 -> info alert.
+  Severity   info < warning < critical; drives status pills + console.
+  VitalsSample  The canonical 1 Hz record: { ts, crewId, vitals, daily,
+             asleep, exercising, status } - the seam for real data (T6).
+
+================================================================================
+ END OF PACK - go build something great. -Avani
+================================================================================

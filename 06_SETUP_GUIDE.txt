@@ -1,0 +1,102 @@
+================================================================================
+ 06 - SETUP GUIDE (GET IT RUNNING IN 5 MINUTES)
+================================================================================
+
+--------------------------------------------------------------------------------
+ 6.1 PREREQUISITES
+--------------------------------------------------------------------------------
+
+  Node.js >= 18 (20+ recommended)   https://nodejs.org
+  Git                               https://git-scm.com
+  A modern browser (the app targets Chromium + Firefox)
+
+  No database. No API keys. No environment variables required.
+
+--------------------------------------------------------------------------------
+ 6.2 CLONE + RUN (ALL PLATFORMS)
+--------------------------------------------------------------------------------
+
+  git clone https://github.com/Avani376/astronaut-health-monitoring.git
+  cd astronaut-health-monitoring
+  npm install          # installs both workspaces in one shot
+  npm run dev          # starts API :4000 + dashboard :5173
+
+  Open http://localhost:5173
+
+  You should see: a dark mission-control dashboard, 6 crew cards with live
+  numbers, MET clock counting, and (after ~4 min) scripted demo events.
+
+--------------------------------------------------------------------------------
+ 6.3 WHAT THE SCRIPTS DO
+--------------------------------------------------------------------------------
+
+  npm run dev         server (tsx watch) + client (vite) with auto-reload
+  npm run dev:server  server only     http://localhost:4000
+  npm run dev:client  client only     http://localhost:5173
+  npm run build       typecheck + compile server to dist/ + bundle client
+  npm run start       run the compiled server (server/dist/index.js)
+  npm run typecheck   tsc --noEmit for both workspaces (CI gate)
+
+--------------------------------------------------------------------------------
+ 6.4 WINDOWS NOTES
+--------------------------------------------------------------------------------
+
+  - Use PowerShell, cmd, or Git Bash - all fine.
+  - If port 4000/5173 is busy:
+      find what is listening:  netstat -ano | findstr :4000
+      kill it:                 taskkill /PID <pid> /F
+    or change the port:  set PORT=4001 && npm run dev:server
+    (client proxies to 4000; if you move the server port, update
+     client/vite.config.ts proxy targets too.)
+  - If npm install fails on a corporate network/proxy, configure npm to
+    trust the registry cert or use a personal hotspot once.
+
+--------------------------------------------------------------------------------
+ 6.5 MACOS / LINUX NOTES
+--------------------------------------------------------------------------------
+
+  Standard Node setup works. If port conflicts:  lsof -i :4000  then kill.
+  Building on ARM (Apple Silicon): pure-JS deps only - no native modules.
+
+--------------------------------------------------------------------------------
+ 6.6 VERIFY THE PIPELINE (2-MINUTE CHECKLIST)
+--------------------------------------------------------------------------------
+
+  1. Dashboard loads, MET clock ticks, 6 crew cards show plausible vitals
+     (HR 55-75 awake, SpO2 97-98, temp 36.4-36.8, hydration varies).
+  2. Scenario Injector (right rail): pick "Hypoxic episode" on any member,
+     click Inject. Within ~90 s a CRITICAL alert appears in Active Alerts
+     and the status pill turns red (SpO2 < 90 for 10 s).
+  3. After the scenario ends (~6 min total), the alert auto-resolves
+     ("resolved" chip in the Alerts console).
+  4. Reports page: select the same member + "Last hour" -> the narrative
+     mentions the SpO2 excursion; JSON export downloads.
+  5. (Optional) curl http://localhost:4000/api/mission -> JSON.
+
+--------------------------------------------------------------------------------
+ 6.7 TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+  Dashboard stuck on "Establishing downlink..."
+    -> Server not running. Run  npm run dev:server  and watch its console.
+       If it printed the ASTROVITALS banner, check the browser console for
+       proxy/WebSocket errors (usually port mismatch in vite.config.ts).
+
+  Numbers look frozen
+    -> Socket disconnected: the top bar shows "Offline". Hard-refresh the
+       page; the server keeps simulating regardless.
+
+  Alert did not fire after injecting
+    -> Rules require sustained breaches (see 05_DATA_DICTIONARY). hypoxia
+       crosses crit <90 at ~95 s and needs 10 s more - wait ~2 min.
+       Dehydration on members with high hydration baseline takes longer -
+       inject it on "Marcus Webb" (lowest baseline) for fastest results.
+
+  npm run build fails with TS errors
+    -> Run npm install first (workspace hoisting). Then run
+       npm run typecheck and fix the first error; subsequent ones are often
+       cascade noise.
+
+  Want a clean restart of history?
+    -> Ctrl+C the server and start it again; ring buffers are in-memory.
+================================================================================

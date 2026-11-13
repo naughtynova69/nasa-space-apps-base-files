@@ -1,0 +1,103 @@
+================================================================================
+ 01 - PROJECT CONTEXT
+================================================================================
+
+--------------------------------------------------------------------------------
+ 1.1 THE PROBLEM
+--------------------------------------------------------------------------------
+
+On long-duration space missions astronauts face:
+
+  - Radiation exposure (higher cumulative dose than any Earth profession)
+  - Isolation and confinement (behavioral health, sleep degradation, stress)
+  - Microgravity deconditioning (bone density, muscle, cardiovascular)
+  - Distance from Earth-based medical support (real-time consults impossible
+    beyond LEO; delays up to ~22 minutes one-way on a Mars mission)
+  - Limited crew: usually ONE person (the Crew Medical Officer, "CMO") handles
+    all medical matters, on top of their engineering duties
+
+The crew therefore needs software that lets them SELF-monitor: gather health
+indicators, evaluate the status of their health, and act on it autonomously.
+
+--------------------------------------------------------------------------------
+ 1.2 OUR SOLUTION (THE PITCH)
+--------------------------------------------------------------------------------
+
+AstroVitals is "mission control for medicine" - a single on-board web app that
+gives a 6-person crew:
+
+  1. LIVE VITALS DASHBOARD
+     Ten physiologic streams per crew member at 1 Hz: heart rate, respiratory
+     rate, oxygen saturation (SpO2), systolic/diastolic blood pressure, core
+     temperature, hydration %, radiation dose rate + cumulative dose, and a
+     behavioral stress index. Crew cards show live status pills, sparklines,
+     sleep cycle / exercise badges.
+
+  2. CLINICAL ALERT ENGINE ("act on the status of your health")
+     13 sustained-threshold clinical rules (a value must stay out of band for
+     N seconds before firing - no single-sample false alarms) plus a rolling
+     z-score statistical anomaly detector for slow drifts. Every alert carries
+     a severity (info / warning / critical), a plain-language recommendation
+     ("recommend fluid intake", "initiate shelter protocol"), auto-resolves
+     when the condition clears, and can be acknowledged by the CMO.
+
+  3. EVALUATION VIEWS
+     Per-crew-member detail page: 6h/1h/12h trend charts with warn/crit
+     threshold bands, daily aggregates (sleep hours, sleep quality, exercise
+     compliance vs the 120-min countermeasure target), CMO notes, alert
+     history. Plus an alert console with severity/crew filters.
+
+  4. DAILY HEALTH REPORTS
+     Per-metric min/avg/max + "% of time outside clinical band", radiation
+     delta, sleep/exercise compliance, alert counts, and a generated plain-
+     language narrative. One-click JSON export (judges love this).
+
+  5. DEMO SCENARIO INJECTOR
+     The killer feature for the 5-minute pitch video: inject fever, hypoxia,
+     cardiac arrhythmia, progressive dehydration, a solar particle event
+     (station-wide), an acute stress spike, or sleep disruption into the
+     simulation and watch the pipeline react live: vitals move -> rule fires
+     -> alert appears -> CMO acknowledges -> condition clears -> alert
+     auto-resolves -> report reflects it.
+
+--------------------------------------------------------------------------------
+ 1.3 WHY THIS DESIGN WINS (TALKING POINTS FOR THE SUBMISSION)
+--------------------------------------------------------------------------------
+
+  - Addresses the challenge statement literally: "gathers health indicators"
+    (10 streams), "evaluate" (dashboards, charts, reports), "act" (alerts with
+    recommendations + CMO workflow).
+  - Fully autonomous / on-board: one Node process + a browser. No cloud, no
+    Earth dependency - exactly the constraint of deep-space medicine.
+  - Simulation-first with a clean seam: the engine produces VitalsSample
+    objects; replace it with a wearable ingest service later and NOTHING
+    downstream changes (rules, store, UI all consume the same shape).
+  - Medically credible: thresholds, units and rules are modeled on published
+    NASA references (CHeCS, HRP standards, LSDA datasets) - documented in
+    05_DATA_DICTIONARY.txt.
+  - Deterministic demo: seeded PRNG + scripted scenario timeline, so the
+    pitch video always shows the same compelling story.
+
+--------------------------------------------------------------------------------
+ 1.4 SCOPE DECISIONS (WHAT WE DELIBERATELY DID NOT BUILD - YET)
+--------------------------------------------------------------------------------
+
+  - No database in v1: in-memory ring buffers (12 h of history). Deliberate:
+    zero-install demo; SQLite is task T1 on the board.
+  - No authentication/roles in v1: the CMO workflow is modeled but not gated.
+  - No real wearable integration in v1: same seam, see task T6.
+  - No ML anomaly detection in v1: z-score covers the "statistical" story;
+    task T7.
+
+--------------------------------------------------------------------------------
+ 1.5 GLOSSARY OF PRODUCT TERMS (QUICK)
+--------------------------------------------------------------------------------
+
+  CMO        Crew Medical Officer - the astronaut with medical training
+  MET        Mission Elapsed Time (displayed as "147d 06:32:11")
+  Sol        A mission day (we number days from mission start, sol 148 today)
+  Scenario   An injectable physiologic event (fever, hypoxia, ...)
+  Ring buffer  Fixed-size in-memory history (12 h at one sample / 5 s)
+  Threshold rule   Alert rule with a sustained breach requirement
+  z-score    Standard deviations from a rolling baseline (statistical anomaly)
+================================================================================

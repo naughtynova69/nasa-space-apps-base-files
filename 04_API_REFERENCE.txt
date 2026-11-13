@@ -1,0 +1,132 @@
+================================================================================
+ 04 - API REFERENCE
+================================================================================
+
+Base URL (dev): http://localhost:4000/api
+The Vite dev server (port 5173) proxies /api and /socket.io to :4000.
+All responses are JSON. Timestamps = epoch milliseconds (UTC).
+
+--------------------------------------------------------------------------------
+ REST ENDPOINTS
+--------------------------------------------------------------------------------
+
+GET /api/health
+    Liveness probe.
+    -> { ok: true, version: "1.0.0", uptimeSec: number }
+
+GET /api/mission
+    Mission metadata + live counters.
+    -> { name, vehicle, startedAt, metSeconds, sol, utcNow, crewCount,
+         statusCounts: { nominal, watch, warning, critical },
+         activeAlerts, activeScenarios, simVersion }
+
+GET /api/crew
+    Array of CrewSummary (one per crew member).
+    -> [ { id, name, role, initials, status,           // nominal|watch|warning|critical
+           vitals: { heartRate, respRate, spo2, bpSys, bpDia, coreTemp,
+                     hydrationPct, radiationUsvH, radiationCumMsv, stressIndex },
+           daily: { sleepHours, sleepQuality, exerciseMinutes },
+           asleep, exercising, activeAlerts, worstSeverity } ]
+
+GET /api/crew/:id
+    Full detail + last 50 alerts for one member.
+    -> { id, name, role, initials, baseline, schedule, notes,
+         status, vitals, daily, asleep, exercising, alerts: [Alert] }
+    404 for unknown ids.
+
+GET /api/crew/:id/history?metrics=heartRate,spo2&minutes=360&points=400
+    Downsampled (bucket-averaged) history from the ring buffer.
+      metrics : comma list of TICK_METRICS (default heartRate,spo2)
+      minutes : 5..720   (default 120)
+      points  : 50..1500 (default 400)
+    -> { crewId, fromTs, toTs,
+         metrics: { "<metric>": { ts: number[], values: number[] } } }
+
+GET /api/alerts?status=active|resolved|all&crewId=&severity=info|warning|critical
+    Alert list, newest first (server keeps up to 1000).
+    Alert shape:
+      { id, crewId, crewName, ruleId, metric, metricLabel,
+        severity, message, value, unit, threshold?, zScore?,
+        firedAt, resolvedAt?, acknowledgedAt? }
+    Default status=active.
+
+POST /api/alerts/:id/acknowledge
+    CMO acknowledges an alert (does NOT resolve it).
+    -> updated Alert; 404 if missing or already acknowledged.
+
+GET /api/reports/:crewId?minutes=720
+    Daily health report over the window (5..1440 min).
+    -> { crewId, crewName, role, windowMinutes, fromTs, toTs,
+         rows: [ { metric, label, unit, min, avg, max, timeOutOfBandPct } ],
+         daily, radiationDeltaMsv, alertCount, criticalAlertCount,
+         narrative: [ "...", ... ] }
+
+GET /api/scenarios
+    -> { available: [ { type, label, description, defaultDurationSec } ],
+         active:   [ ScenarioInfo ] }
+    Scenario types: fever, hypoxia, arrhythmia, dehydration,
+                    radiation_storm, stress_spike, insomnia
+    ScenarioInfo.crewId == "*" means station-wide.
+
+POST /api/scenarios/inject
+    Body: { "type": "hypoxia", "crewId": "ms-tanaka", "durationSec": 90 }
+      durationSec optional (defaults per scenario); crewId optional -> "*".
+    -> ScenarioInfo ; 400 on unknown type/crew.
+
+GET /api/metrics
+    Display metadata for all tick metrics (label/short/unit/decimals).
+
+--------------------------------------------------------------------------------
+ SOCKET.IO EVENTS (connect to ws://localhost:4000/socket.io)
+--------------------------------------------------------------------------------
+
+Server -> client:
+
+  snapshot        { mission, crew, alerts, scenarios }
+                  Full state on connect. Use this to initialize the UI.
+
+  telemetry       { ts, samples: [ VitalsSample ] }        (1 Hz)
+                  VitalsSample = { ts, crewId, vitals, daily,
+                                   asleep, exercising, status }
+
+  alert:new       Alert        (rule fired after sustained breach,
+                                or z-score detector fired)
+
+  alert:resolved  Alert        (auto-resolved after 60 s in-band)
+
+  mission         MissionInfo  (1 Hz clock + counters)
+
+Client -> server: none. All mutations go through REST.
+
+Minimal client wiring:
+
+    import { io } from "socket.io-client";
+    const socket = io({ transports: ["websocket", "polling"] });
+    socket.on("snapshot",  renderFullState);
+    socket.on("telemetry", ({ samples }) => samples.forEach(updateCrewCard));
+    socket.on("alert:new", showToast);
+
+--------------------------------------------------------------------------------
+ CURL CHEAT SHEET (COPY/PASTE)
+--------------------------------------------------------------------------------
+
+  # Mission snapshot
+  curl http://localhost:4000/api/mission
+
+  # All crew
+  curl http://localhost:4000/api/crew
+
+  # HR history for Kenji Tanaka, last 6 h, ~100 points
+  curl "http://localhost:4000/api/crew/ms-tanaka/history?metrics=heartRate&minutes=360&points=100"
+
+  # Fire a critical alert NOW (station-wide radiation storm)
+  curl -X POST http://localhost:4000/api/scenarios/inject \
+       -H "Content-Type: application/json" \
+       -d '{"type":"radiation_storm"}'
+
+  # Acknowledge an alert
+  curl -X POST http://localhost:4000/api/alerts/<ALERT_ID>/acknowledge
+
+  # 24 h report for Marcus Webb
+  curl "http://localhost:4000/api/reports/ps-webb?minutes=1440"
+================================================================================
