@@ -1,0 +1,84 @@
+================================================================================
+ 12 - SESSION LOG (WORK DONE ON THE PACK + APP REPO)
+================================================================================
+
+ Maintained by: Vijay Prakash Sahu (naughtynova69)
+ Last updated:  2026-11-13
+
+ This file records what was actually done, session by session, so the team
+ does not have to reconstruct history from chat. Newest entries at the bottom.
+ App repo: https://github.com/Avani376/astronaut-health-monitoring
+
+--------------------------------------------------------------------------------
+ SESSION 2026-11-13 - naughtynova69
+--------------------------------------------------------------------------------
+
+ 1. BASE FILES PUBLISHED
+    - This context pack (files 00-11, unchanged, from Avani's original
+      folder) was uploaded to a mirror repo under the user's own account:
+      https://github.com/naughtynova69/nasa-space-apps-base-files
+    - Added README.md indexing the pack in reading order.
+    - Purpose: team-owned copy of the "team-context/" pack described in
+      09_FOLDER_STRUCTURE.txt; the app repo itself stays owned by Avani376.
+
+ 2. PACK REVIEWED END TO END
+    - All 12 files read; push access to the app repo confirmed for
+      naughtynova69 via the GitHub API (collaborator permission: push).
+
+ 3. TASK T1 (SQLITE PERSISTENCE) - DONE, PR OPEN
+    Branch: feat/sqlite-persistence
+    Issue:  https://github.com/Avani376/astronaut-health-monitoring/issues/1
+    PR:     https://github.com/Avani376/astronaut-health-monitoring/pull/2
+    Status: awaiting review (Avani376 or nominee), then squash merge.
+
+    What was built (task spec from 08_TASK_BOARD.txt):
+    - server/src/store/db.ts (NEW): SQLite layer on better-sqlite3 ^13.1.1.
+      WAL journal, synchronous NORMAL, prepared statements.
+      Schema: samples(ts, crew_id, metric, value) PK (crew_id, ts, metric)
+              WITHOUT ROWID + index on ts;
+              alerts(... all Alert fields, seq AUTOINCREMENT = insertion
+              order, id UNIQUE) + crew/status indexes;
+              crew(id, name, role, initials, notes, baseline_json,
+              profile_json, schedule_json) seeded from simulation/crew.ts;
+              meta(key, value) with schema_version = '1'.
+      DB file: server/data/astrovitals.db (covered by existing .gitignore
+      rule data/); override path with DB_PATH env var.
+    - server/src/store/store.ts (REWRITTEN, public API identical):
+      ring buffers replaced by SQLite; 5 s history commit cadence preserved;
+      12 h retention via prune (once per 60 s) replaces the fixed ring;
+      1000-alert cap kept (newest kept); alert ordering newest-first by
+      insertion seq; ack/resolve semantics unchanged (ack uses wall clock,
+      resolve uses engine ts, both idempotent-undefined on repeat).
+      Live 1 Hz sample stays in memory (ephemeral, as before).
+    - server/package.json + root package-lock.json: added better-sqlite3
+      (runtime) and @types/better-sqlite3 (dev).
+    - NO other file touched: routes, sockets, analytics, engine unchanged;
+      all REST endpoints and socket events identical.
+
+    How it was verified (manual, Node v22.21.0 on macOS, prebuilt binary):
+    - Merge gate: npm run typecheck && npm run build - green (both
+      workspaces; the client chunk-size warning is pre-existing = task T17).
+    - Boot: /api/health, /api/mission, /api/crew OK.
+    - History: /api/crew/ms-rossi/history collects samples at the 5 s
+      cadence (6 points after ~30 s uptime).
+    - Alert pipeline: injected radiation_storm (station-wide) via
+      POST /api/scenarios/inject -> 7 radrate-high CRITICAL alerts fired.
+    - Acknowledge: POST /api/alerts/:id/acknowledge -> acknowledgedAt set.
+    - RESTART TEST (the AC): SIGTERM -> npm run start -> history endpoint
+      returned 18 of 23 points from the PRE-restart run; the acknowledged
+      alert survived with acknowledgedAt intact; radiationCumMsv carried
+      over monotonically.
+    - Reports: /api/reports/ms-rossi?minutes=60 -> 10 metric rows, positive
+      radiation delta (chronological ordering intact), narrative + alert
+      counts correct.
+
+ 4. NEXT UP (P0 REMAINING, SEE 08_TASK_BOARD.txt)
+    - T2 Vitest unit tests for rules + report (suggested next claim)
+    - T3 Playwright smoke test
+    - T4 pitch video + project page copy (needs Avani coordination)
+    - T5 mobile/tablet responsive pass
+    - Follow-up docs PR: docs/ARCHITECTURE.md still calls the store
+      in-memory; to be updated after T1 merges (one-logical-change rule).
+
+                                        -- log entry 2026-11-13, naughtynova69
+================================================================================

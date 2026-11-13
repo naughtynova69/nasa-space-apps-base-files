@@ -30,6 +30,7 @@ Read in order:
 | [09_FOLDER_STRUCTURE.txt](09_FOLDER_STRUCTURE.txt) | Every file in the app repo and what it does |
 | [10_DESIGN_SYSTEM.txt](10_DESIGN_SYSTEM.txt) | UI theme, colors, component patterns |
 | [11_FAQ_GLOSSARY.txt](11_FAQ_GLOSSARY.txt) | Quick answers + space-medicine vocabulary |
+| [12_SESSION_LOG.txt](12_SESSION_LOG.txt) | Work log: what was done on the pack + app repo, newest last |
 
 ## Quick start
 
