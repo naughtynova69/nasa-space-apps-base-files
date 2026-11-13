@@ -300,5 +300,15 @@
  (astro-t6-wearable .. astro-t11-ci) kept in the workspace for
  rebase-on-demand; safe to delete after merges.
 
+ ADDENDUM (same night): Avani merged #9/#10/#11 -> T1-T11 ALL DONE, zero
+ open PRs, CI (ci.yml) live on main. Follow-up: README glow-up PR #13
+ (docs/readme-glow-up) - centered header + 11 shields badges (incl. live
+ CI badge), two REAL screenshots captured from a fresh boot (dashboard +
+ crew-detail SpO2 chart catching an injected hypoxia under its bands,
+ committed to docs/assets/), mermaid architecture diagram, feature/config/
+ scenario/testing tables, stale content fixed (ring buffers -> SQLite,
+ MAD flag, ingest seam, 4 auto scenarios). Docs-only; gate green;
+ mergeable=True.
+
                                         -- log entry 2026-11-13, naughtynova69
 ================================================================================
