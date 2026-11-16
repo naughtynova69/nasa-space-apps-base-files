@@ -311,4 +311,109 @@
  mergeable=True.
 
                                         -- log entry 2026-11-13, naughtynova69
+
+--------------------------------------------------------------------------------
+ SESSION 2026-11-14/16 - UI REDESIGN, CHALLENGE-VIDEO ALIGNMENT, SUBMISSION
+ PREP - naughtynova69
+--------------------------------------------------------------------------------
+
+ Covers the sessions after the two entries above, condensed. Three story
+ arcs plus what the concurrent session shipped on the side.
+
+ 1. UI REDESIGN ARC (PR #15) - MERGED, WITH A CAVEAT
+    The user asked for a UI/UX redesign informed by 7 skill collections
+    (emilkowalski/skills, jakubkrehel/skills, MengTo/Skills,
+    elayadesign/ai-design-skills, ConardLi/garden-skills,
+    Owl-Listener/designer-skills, codeswithroh/tastemaker). Pipeline:
+    3 research agents -> 52 distilled directives -> one binding spec with
+    exact utility-name contracts -> 3 file-ownership implementation
+    agents -> 5 commits, +435/-300 across 21 files ("engineered glass"
+    system: .glass-card two-layer glass, .microlabel mono labels,
+    .status-dot/.status-tick severity encoding, ease-expo motion tokens,
+    hairline borders, quiet Recharts treatment).
+    VERIFICATION: gate green, 66 unit tests, e2e smoke green, 0 px
+    overflow at 375/768 on all routes. The smoke test caught one real
+    regression (restyled injector option labels broke label-based
+    selectOption; test now selects by option VALUE).
+    THE CATCH: after a live browser demo the user judged the dashboard
+    "horrible". A 16-photo review set + honest UI-UX-REPORT.md (workspace
+    root, NOT committed to any repo) diagnosed the root cause: TWO
+    redesign systems stacked (the concurrent session's glassmorphic
+    refresh + the agent system) plus mono-font overuse, hero/icon-chip
+    clutter, no focal hierarchy, and a truncated injector label
+    regression. Decision was offered (close/merge/iterate) but Avani
+    merged #15 anyway (f29369a) - the redesign IS the current baseline.
+    UI-UX-REPORT.md remains the fix-list if a polish pass is wanted.
+    LESSONS: subjective/visual work needs screenshot review + user
+    sign-off BEFORE the PR; a redesign needs ONE design owner, not
+    parallel agents; YouTube transcripts - oEmbed identifies a video but
+    transcript dumps fail, ask the user to watch/summarize.
+
+ 2. CHALLENGE-VIDEO ALIGNMENT (PR #16, MERGED c4f7bf1)
+    The official challenge video (youtube.com/watch?v=RERG3gEmdC8,
+    authored by the BRAZILIAN SPACE AGENCY - Rodrigo Leonardi) states
+    explicit requirements: explain per indicator HOW to take it, WHY it
+    matters, WHAT to do when abnormal; remind crew to take regular
+    measurements; adapt guidance to environments (spacecraft/station/
+    lunar base); use NASA HRP + NASA Open Science Data Repository. 5
+    agents closed 5 gaps in one branch (feat/challenge-alignment):
+    - About page "How . Why . Act" section (metricGuidance.ts, 10 typed
+      per-metric entries)
+    - Measurement Reminders rail card (3 daily UTC slots, mark-done in
+      localStorage, overdue warn states)
+    - MISSION_PROFILE=station|lunar environment profile -> MissionInfo.
+      environment -> top-bar chip (v1 label-level; per-profile radiation
+      baselines documented as roadmap-T13 metadata)
+    - REAL-DATA REPLAY VALIDATION: OSDR dataset OSD-681 (ALSDA LSDS-83
+      rat biotelemetry, DOI 10.26030/1ahn-fv90, "no restrictions on use"
+      per AWS Open Data) converted to the ingest stream with full
+      PROVENANCE.md. Research established OSD-681 is the ONLY
+      biotelemetry study in OSDR (repo-wide filter sweep + S3 bucket
+      sweep); legacy OSDR URLs/APIs are 404 - current portal is
+      osdr.nasa.gov/bio/repo. Real post-suspension temperatures
+      legitimately cross the human temp-low band and fire alerts -
+      real data exercising the rules, documented, not hidden.
+    - Pitch narrative: Brazilian Space Agency authorship, Artemis->Mars
+      autonomy framing, Earth benefit for remote/underserved communities;
+      pitch script updated (<=60 s intact).
+    Verification: gate green, 66/66 unit tests (5 new ingestion tests),
+    e2e smoke green.
+
+ 3. README AUDIT (PR #17, MERGED 00d447a)
+    Two-agent pass: W1 audited every README claim against code + a live
+    boot (6 discrepancies fixed: broken tsconfig badge link, missing
+    CORS_ORIGIN row, understated test-suite description, wrong repo
+    layout paths, missing RESEARCH_VALIDATION.md entry, stale
+    screenshots - both re-shot with env chip + reminders card) and V1
+    independently fact-checked the result: 27/27 claim groups PASS,
+    verdict "factually clean". Screenshots in docs/assets now show the
+    SPACE STATION chip and Measurement Reminders card.
+
+ 4. CONCURRENT-SESSION WORK NOW ON MAIN (log it for awareness)
+    - Glassmorphic UI refresh + README screenshot re-shoot + semantic-h1
+      fix (36e5289, cef5eb3) - landed BEFORE the PR #15 redesign; the
+      two systems coexist (see arc 1).
+    - Simulation-accuracy harness: server/src/validation/ (14-check
+      NASA/CSA accuracy suite), `calibrate -w server` CLI, docs/
+      RESEARCH_VALIDATION.md; About page renders the live scorecard.
+    - Security hardening: fc2019c + adcf0ea (request-derived id
+      hardening, api.ts taint-path de-conflict, ingestion test paths).
+    - Knowledge-graph memory layer: b45b0ee "graph-first agent
+      workflow" - details live in that commit; review before touching
+      anything memory-related.
+
+ 5. SUBMISSION PREP (2026-11-15)
+    - Project-page submission bios COMPLETE (assembled from logged-in
+      LinkedIn reads). Still outstanding: the T4 pitch video itself
+      (human recording - script at docs/pitch/PITCH_VIDEO_SCRIPT.md,
+      now including the reminders/environment beat and the OSD-681
+      closing line), plus the final Space Apps project-page posting.
+
+ STATE AFTER: main b45b0ee = scaffold + T1-T11 + redesign + 5-gap
+ alignment + README audit + security/graph layers. Only open item on the
+ whole project: T4 video recording (+ optional UI polish pass from
+ UI-UX-REPORT.md). Worktrees astro-* kept in the session workspace; safe
+ to delete.
+
+                                        -- log entry 2026-11-16, naughtynova69
 ================================================================================
